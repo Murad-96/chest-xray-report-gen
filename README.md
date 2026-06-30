@@ -4,7 +4,7 @@ Generate a free-text radiology *findings* report from a single chest X-ray, usin
 DenseNet-121 image encoder feeding a Transformer decoder, trained end-to-end on the
 IU X-Ray dataset.
 
-> **Live demo:** `<streamlit-app-url>`  ·  **Weights:** `hf://<your-username>/cxr-report-gen/best_serving.pt`
+> **Live demo:** `https://chest-xray-report-gen-kbw9pb8kfvm8xntmtermi4.streamlit.app`  ·  **Weights:** `hf://MurMag81/cxr-report-gen/best_serving.pt`
 
 This project frames report generation as image captioning over a medical domain: the
 model "reads" a radiograph and drafts the kind of findings paragraph a radiologist
