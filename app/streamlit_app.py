@@ -35,7 +35,13 @@ st.set_page_config(
     layout="wide",
 )
 
-DEFAULT_CHECKPOINT = "outputs/transformer/best.pt"
+# On Streamlit Community Cloud, set `checkpoint = "hf://<owner>/<repo>/best_serving.pt"`
+# in the app's Secrets so the deployed app pulls weights from the Hub. Locally,
+# this falls back to the training output path.
+try:
+    DEFAULT_CHECKPOINT = st.secrets["checkpoint"]
+except Exception:  # noqa: BLE001 — no secrets configured (local dev)
+    DEFAULT_CHECKPOINT = "outputs/transformer/best.pt"
 DEFAULT_IMAGES_DIR = "app/images"
 DEFAULT_FINDINGS_JSON = "app/images/findings.json"
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg"}
