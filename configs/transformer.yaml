@@ -1,0 +1,69 @@
+# configs/transformer.yaml
+# Vanilla Transformer captioner — full training config (the base others inherit from).
+#
+# NOTE: the encoder is intentionally UNFROZEN (model.config.freeze_encoder: false).
+# This is the single most important setting in the file: the paper's largest result
+# is that freezing the DenseNet-121 encoder collapses validation BLEU-4 to ~4e-6
+# (the model emits a generic "everything normal" template), while unfreezing it
+# lifts test BLEU-4 to ~0.10. Do not flip this to true.
+
+experiment:
+  name: "transformer"          # output dir = <output_dir>/<name>/  -> outputs/transformer/
+  seed: 42
+  output_dir: "outputs"        # point this at a mounted Drive path on Colab so
+                               # checkpoints survive disconnects (then use --resume)
+
+data:
+  root: null                   # null -> falls back to IU_XRAY_ROOT env var, then module default
+  batch_size: 16
+  num_workers: 2
+  max_report_len: 60
+  min_word_freq: 3
+
+model:
+  name: "transformer"          # must match the key your src/models/__init__.py get_model() maps
+                               # to TransformerCaptioner
+  config:
+    embed_size: 512
+    n_heads: 8
+    n_layers: 6
+    d_ff: 2048
+    dropout: 0.1
+    pretrained_encoder: true
+    freeze_encoder: false      # see header note — keep this false
+
+optimizer:
+  name: "adamw"
+  lr: 1.0e-4                   # write as 1.0e-4, NOT 1e-4: PyYAML parses 1e-4 as a string,
+                               # which then fails the config type check (must be int/float)
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: "linear_warmup_cosine"
+  warmup_epochs: 2             # set exactly one of warmup_epochs / warmup_steps
+  min_lr_ratio: 0.1            # cosine decays to 0.1x base lr
+
+training:
+  epochs: 30
+  mixed_precision: true        # fp16 AMP; fine on a Colab T4
+  log_every_n_steps: 50
+  grad_clip_norm: 1.0          # null to disable
+
+validation:
+  every_n_epochs: 1
+  generate_samples_every_n_epochs: 1
+  num_sample_generations: 3    # how many sample reports to decode + print each val epoch
+  generation_max_length: 60
+  beam_size: 1                 # greedy (the Transformer's generate() ignores >1 anyway)
+
+early_stopping:
+  enabled: true
+  metric: "val_loss"           # key produced by the trainer's _validate()
+  mode: "min"
+  patience: 10
+  min_delta: 0.0
+
+checkpoint:
+  save_last: true
+  save_best: true
