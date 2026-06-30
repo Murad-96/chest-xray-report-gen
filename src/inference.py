@@ -41,6 +41,37 @@ _EVAL_TRANSFORM = transforms.Compose([
 ImageLike = Union[str, Path, Image.Image]
 
 
+def _resolve_checkpoint_path(spec: str) -> str:
+    """
+    Resolve a checkpoint location to a local file path.
+
+    Local paths are returned unchanged. Hugging Face Hub references of the form
+    `hf://<owner>/<repo>/<filename>` are downloaded and cached via
+    huggingface_hub.hf_hub_download, returning the local cache path. This lets
+    the same code serve a local checkpoint in development and a Hub-hosted one
+    in deployment (e.g. Streamlit Community Cloud) with no code change. For a
+    private Hub repo, set the HF_TOKEN env var (or log in) before loading.
+    """
+    if not spec.startswith("hf://"):
+        return spec
+    parts = spec[len("hf://"):].split("/")
+    if len(parts) < 3:
+        raise ValueError(
+            f"Malformed hf:// checkpoint spec: {spec!r}. "
+            f"Expected hf://<owner>/<repo>/<filename>."
+        )
+    repo_id = "/".join(parts[:2])
+    filename = "/".join(parts[2:])
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError as e:
+        raise ImportError(
+            "huggingface_hub is required to load hf:// checkpoints. "
+            "Install it with `pip install huggingface_hub`."
+        ) from e
+    return hf_hub_download(repo_id=repo_id, filename=filename)
+
+
 class ReportGenerator:
     """Stateful wrapper around a trained model: load once, predict many times."""
 
@@ -79,7 +110,7 @@ class ReportGenerator:
         carries the full config and the vocab state, so nothing external is
         needed to reconstruct the model.
         """
-        ckpt_path = Path(checkpoint_path)
+        ckpt_path = Path(_resolve_checkpoint_path(str(checkpoint_path)))
         if not ckpt_path.exists():
             raise FileNotFoundError(
                 f"Checkpoint not found: {ckpt_path}. Train a model first "
